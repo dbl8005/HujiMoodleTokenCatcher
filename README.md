@@ -56,7 +56,7 @@ Your password never passes through this script. You type it into the real univer
 | `upcoming_events` | Upcoming calendar events and deadlines |
 | `grades` | Your grade items in a course |
 | `course_forums` / `forum_discussions` | Forums and their posts |
-| `download_file` | Download a course file to `~/Downloads/moodle` |
+| `download_file` | Download a course file to `~/Downloads/moodle` (only this Moodle's file URLs) |
 
 All tools are read-only.
 

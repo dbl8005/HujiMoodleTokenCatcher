@@ -131,15 +131,24 @@ def course_forums(course_id: int) -> list:
 
 
 @mcp.tool()
-def download_file(file_url: str, dest_dir: str = "~/Downloads/moodle") -> str:
-    """Download a Moodle file (fileurl from course_contents) to a local folder; returns the path."""
-    dest = os.path.expanduser(dest_dir)
+def download_file(file_url: str) -> str:
+    """Download a Moodle file (fileurl from course_contents) to ~/Downloads/moodle; returns the path."""
+    # Only send the token to this Moodle's own file endpoints.
+    url, base = httpx.URL(file_url), httpx.URL(BASE)
+    allowed = (f"{base.path}/webservice/pluginfile.php/", f"{base.path}/pluginfile.php/")
+    if url.scheme != "https" or url.host != base.host or not url.path.startswith(allowed):
+        raise ValueError(f"Refusing to download: not a file URL on {BASE}")
+    dest = os.path.realpath(os.path.expanduser("~/Downloads/moodle"))
     os.makedirs(dest, exist_ok=True)
-    sep = "&" if "?" in file_url else "?"
-    r = httpx.get(f"{file_url}{sep}token={TOKEN}", timeout=120, follow_redirects=True)
-    r.raise_for_status()
-    name = unquote(os.path.basename(file_url.split("?")[0])) or "file"
+    # Decode first, then take the basename, so "..%2F" can't escape dest.
+    name = os.path.basename(unquote(url.path))
+    if name in ("", ".", ".."):
+        name = "file"
     path = os.path.join(dest, name)
+    if os.path.dirname(os.path.realpath(path)) != dest:
+        raise ValueError("Refusing to write outside ~/Downloads/moodle")
+    r = httpx.get(url.copy_merge_params({"token": TOKEN}), timeout=120, follow_redirects=True)
+    r.raise_for_status()
     with open(path, "wb") as f:
         f.write(r.content)
     return path
